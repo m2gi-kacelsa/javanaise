@@ -86,8 +86,6 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	 * @throws JvnException
 	 **/
 	public JvnObject jvnCreateObject(Serializable o) throws jvn.JvnException {
-		JvnObject jvnObject = new JvnObjectImpl(o);
-		jvnObjsCache.put(jvnObject.jvnGetObjectId(), jvnObject);
 		return new JvnObjectImpl(o);
 	}
 
@@ -102,6 +100,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		if (jo != null) {
 			try {
 				int idObject = coord.jvnGetObjectId();
+				jo.setJvnObjectId(idObject);
 				coord.jvnRegisterObject(jon, jo, this);
 				jvnObjsCache.put(idObject, jo);
 			} catch (RemoteException e) {

@@ -32,6 +32,9 @@ public class Irc {
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
 		
+		js.jvnRegisterObject("IRC", new JvnObjectImpl(new Serializable() {
+		}));
+		
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");

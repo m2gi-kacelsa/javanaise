@@ -11,8 +11,8 @@ public class JvnObjectImpl implements JvnObject {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private int id = 1;
-	private JvnObjectState jvnObjectState;
+	private int jvnObjectId = 1;
+	private transient JvnObjectState jvnObjectState = JvnObjectState.NL;
 
 	private Serializable currentJvnObject = null;
 
@@ -20,7 +20,7 @@ public class JvnObjectImpl implements JvnObject {
 		super();
 	}
 
-	public JvnObjectImpl( Serializable currentJvnObject) {
+	public JvnObjectImpl(Serializable currentJvnObject) {
 		super();
 		this.jvnObjectState = JvnObjectState.W;
 		this.currentJvnObject = currentJvnObject;
@@ -30,24 +30,27 @@ public class JvnObjectImpl implements JvnObject {
 	public void jvnLockRead() throws JvnException {
 		// TODO Auto-generated method stub
 		synchronized (this) {
-			if (jvnObjectState == JvnObjectState.RC) {
+			if (jvnObjectState == JvnObjectState.RC)
 				this.jvnObjectState = JvnObjectState.R;
-			} else if (jvnObjectState == JvnObjectState.R){
-				System.out.println("Le Lock est déja en lecture!!");			}
-		}
+			else {
+				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
+				this.jvnObjectState = JvnObjectState.R;
+			}
 
+		}
 	}
 
 	@Override
-	public synchronized void jvnLockWrite() throws JvnException {
+	public void jvnLockWrite() throws JvnException {
 		// TODO Auto-generated method stub
-
 		synchronized (this) {
 			if (jvnObjectState == JvnObjectState.WC) {
 				jvnObjectState = JvnObjectState.W;
-			} else if (jvnObjectState == JvnObjectState.W){
-				System.out.println("Le Lock est déja en écriture!!");
+			} else {
+				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);	
+				jvnObjectState = JvnObjectState.W;
 			}
+
 		}
 
 	}
@@ -57,9 +60,6 @@ public class JvnObjectImpl implements JvnObject {
 		// TODO Auto-generated method stub
 		synchronized (this) {
 			switch (jvnObjectState) {
-			case NL:
-				this.notifyAll();
-				break;
 			case R:
 				this.jvnObjectState = JvnObjectState.RC;
 				this.notifyAll();
@@ -77,7 +77,7 @@ public class JvnObjectImpl implements JvnObject {
 	@Override
 	public int jvnGetObjectId() throws JvnException {
 		// TODO Auto-generated method stub
-		return id;
+		return jvnObjectId;
 	}
 
 	@Override
@@ -149,12 +149,12 @@ public class JvnObjectImpl implements JvnObject {
 
 	}
 
-	public int getId() {
-		return id;
+	public int getJvnObjectId() {
+		return jvnObjectId;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setJvnObjectId(int jvnObjectId) {
+		this.jvnObjectId = jvnObjectId;
 	}
 
 	public JvnObjectState getJvnObjectState() {

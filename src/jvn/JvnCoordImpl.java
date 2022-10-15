@@ -20,6 +20,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * 	
 	 */
 	private static final long serialVersionUID = 1L;
+	private int id;
 
 	/**
 	 * Default constructor
@@ -27,7 +28,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws JvnException
 	 **/
 	public JvnCoordImpl() throws Exception {
-		super();
+		id = 0;
+
 		LocateRegistry.createRegistry(1099);
 		Naming.rebind("rmi://localhost:1099/COORD", this);
 		System.out.println(" A REFERENCE OF THE COORDINATOR IN RMI REGISTRY IS CREATED!");
@@ -36,7 +38,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 
 	public static void main(String argv[]) throws Exception {
 		JvnCoordImpl jvnCoordImpl = new JvnCoordImpl();
-		System.out.println("Coordinator launched!!	"+ jvnCoordImpl);
+		System.out.println("Coordinator launched!!	" + jvnCoordImpl);
 
 	}
 
@@ -47,8 +49,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException,JvnException
 	 **/
 	public int jvnGetObjectId() throws java.rmi.RemoteException, jvn.JvnException {
-		//JvnObjectImpl jvnObject = new JvnObjectImpl();
-		return 0;
+		// JvnObjectImpl jvnObject = new JvnObjectImpl();
+		return id++;
 	}
 
 	/**
@@ -62,7 +64,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 **/
 	public void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js)
 			throws java.rmi.RemoteException, jvn.JvnException {
-		// to be completed
 	}
 
 	/**
@@ -73,7 +74,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException,JvnException
 	 **/
 	public JvnObject jvnLookupObject(String jon, JvnRemoteServer js) throws java.rmi.RemoteException, jvn.JvnException {
-
 		return null;
 	}
 
@@ -87,6 +87,10 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 **/
 	public Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
 
+		// joi - quel verrou ? R /W
+		// joi- writer / readers
+		// Verify arguments
+
 		return null;
 	}
 
@@ -99,8 +103,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
 	public Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		// to be completed
+	
 		return null;
+
 	}
 
 	/**
@@ -110,7 +115,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException, JvnException
 	 **/
 	public void jvnTerminate(JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
-		// to be completed
 
 	}
 
