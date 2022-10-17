@@ -34,6 +34,7 @@ public class JvnObjectImpl implements JvnObject {
 				this.jvnObjectState = JvnObjectState.R;
 			else {
 				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
+				currentJvnObject = temp;
 				this.jvnObjectState = JvnObjectState.R;
 			}
 
@@ -47,7 +48,8 @@ public class JvnObjectImpl implements JvnObject {
 			if (jvnObjectState == JvnObjectState.WC) {
 				jvnObjectState = JvnObjectState.W;
 			} else {
-				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);	
+				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnObjectId);	
+				currentJvnObject = temp;
 				jvnObjectState = JvnObjectState.W;
 			}
 
@@ -63,10 +65,11 @@ public class JvnObjectImpl implements JvnObject {
 			case R:
 				this.jvnObjectState = JvnObjectState.RC;
 				this.notifyAll();
+				break;
 			case W:
 				this.jvnObjectState = JvnObjectState.WC;
 				this.notifyAll();
-
+				break;
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + jvnObjectState);
 			}

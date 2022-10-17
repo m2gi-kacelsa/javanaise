@@ -32,13 +32,11 @@ public class Irc {
 		// initialize JVN
 		JvnServerImpl js = JvnServerImpl.jvnGetServer();
 		
-		js.jvnRegisterObject("IRC", new JvnObjectImpl(new Serializable() {
-		}));
-		
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		JvnObject jo = js.jvnLookupObject("IRC");
-		   
+		System.out.println("JVN Object ========>"+jo);
+		
 		if (jo == null) {
 			jo = js.jvnCreateObject((Serializable) new Sentence());
 			// after creation, I have a write lock on the object
@@ -100,7 +98,6 @@ public class Irc {
 		
 		// invoke the method
 		String s = ((Sentence)(irc.sentence.jvnGetSharedObject())).read();
-		
 		// unlock the object
 		irc.sentence.jvnUnLock();
 		
