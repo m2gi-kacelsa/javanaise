@@ -5,7 +5,7 @@
  * Authors: 
  */
 
-package irc2;
+package jvn2;
 
 import java.awt.Button;
 import java.awt.Color;
@@ -27,7 +27,7 @@ import jvn.JvnException;
 import jvn.JvnProxy;
 import jvn.JvnServerImpl;
 
-public class Irc {
+public class Irc2 {
 	public TextArea text;
 	public TextField data;
 	Frame frame;
@@ -42,14 +42,15 @@ public class Irc {
 
 		// Create or get if it exists a shared object named IRC
 		try {
-			s = (ISentence) JvnProxy.newInstance(new Sentence(), "IRC");
+			s = (ISentence) JvnProxy.newInstance(new SentenceImpl(), "IRC");
+			new Irc2(s);
 		} catch (JvnException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		// create the graphical part of the Chat application
-		new Irc(s);
+		
 	}
 
 	/**
@@ -57,7 +58,7 @@ public class Irc {
 	 * 
 	 * @param jo the JVN object representing the Chat
 	 **/
-	public Irc(ISentence s) {
+	public Irc2(ISentence s) {
 		sentence = s;
 		frame = new JFrame();
 
@@ -97,10 +98,10 @@ public class Irc {
  * Internal class to manage user events (read) on the CHAT application
  **/
 class readListener implements ActionListener {
-	Irc irc;
+	Irc2 irc2;
 
-	public readListener(Irc i) {
-		irc = i;
+	public readListener(Irc2 i) {
+		irc2 = i;
 	}
 
 	/**
@@ -108,10 +109,10 @@ class readListener implements ActionListener {
 	 **/
 	public void actionPerformed(ActionEvent e) {
 		// invoke the method
-		String s = irc.sentence.read();
+		String s = irc2.sentence.read();
 		// display the read value
-		irc.data.setText(s);
-		irc.text.append(s + "\n");
+		irc2.data.setText(s);
+		irc2.text.append(s + "\n");
 	}
 }
 
@@ -119,10 +120,10 @@ class readListener implements ActionListener {
  * Internal class to manage user events (write) on the CHAT application
  **/
 class writeListener implements ActionListener {
-	Irc irc;
+	Irc2 irc2;
 
-	public writeListener(Irc i) {
-		irc = i;
+	public writeListener(Irc2 i) {
+		irc2 = i;
 	}
 
 	/**
@@ -130,9 +131,9 @@ class writeListener implements ActionListener {
 	 **/
 	public void actionPerformed(ActionEvent e) {
 		// get the value to be written from the buffer
-		String s = irc.data.getText();
+		String s = irc2.data.getText();
 
 		// invoke the method
-		irc.sentence.write(s);
+		irc2.sentence.write(s);
 	}
 }

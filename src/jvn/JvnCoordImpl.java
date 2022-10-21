@@ -25,11 +25,10 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 */
 	private static final long serialVersionUID = 1L;
 	private int currentId = -1;
-	//List of JvnObjects with their names
-	private HashMap<String, JvnObject> jvnObjectsNameMap = new HashMap<>();
-	//List of servers holding JVNObject with write/read state
-	private HashMap<Integer, ServersAndJvnObjectWithState> listServersWithJvnObj = new HashMap<>();
-
+	// List of JvnObjects with their names
+	private HashMap<String, JvnObject> listJvnObjectsWithNames = new HashMap<>();
+	// List of servers holding JVNObject with write/read state
+	private HashMap<Integer, ServersAndJvnObjectWithState> listServersWithJvnObjects = new HashMap<>();
 
 	/**
 	 * Default constructor
@@ -71,24 +70,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 **/
 	public synchronized void jvnRegisterObject(String jon, JvnObject jo, JvnRemoteServer js)
 			throws java.rmi.RemoteException, jvn.JvnException {
-
-		if (jon == null) {
-			throw new JvnException("name of jvnobject is null!!");
-		} else if (jo == null) {
-			throw new JvnException("jvnObject is null");
-		} else if (js == null) {
-			throw new JvnException("jvnServer passed is null");
-		} else if (jvnObjectsNameMap.containsKey(jon)) {
-			throw new JvnException("jvnObject with such a name is already registered !");
-		} else if (listServersWithJvnObj.containsKey(jo.jvnGetObjectId())) {
-			throw new JvnException("Object with such an id is already registered !");
-		}
-
-		//ajouter le jvn object avec le serveur Js avec statut de l objet write
-		listServersWithJvnObj.put(jo.jvnGetObjectId(), new ServersAndJvnObjectWithState(jo, js, JvnObjectState.W));
-		// associer un nom au jvnobject et ajouter dans la liste
-		jvnObjectsNameMap.put(jon, jo);
-
+		listServersWithJvnObjects.put(jo.jvnGetObjectId(), new ServersAndJvnObjectWithState(jo, js, JvnObjectState.W));
+		listJvnObjectsWithNames.put(jon, jo);
 	}
 
 	/**
@@ -106,7 +89,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			JvnObject searchedJvnObject = jvnObjectsNameMap.get(jon);
+			JvnObject searchedJvnObject = listJvnObjectsWithNames.get(jon);
 			if (searchedJvnObject == null) {
 				return null;
 			}
@@ -125,11 +108,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 **/
 	public Serializable jvnLockRead(int joi, JvnRemoteServer js) throws java.rmi.RemoteException, JvnException {
 		if (js == null) {
-			throw new JvnException("jvnRemoteServer passed is null");
+			throw new JvnException("jvnRemoteServer is null");
 		}
 
 		synchronized (this) {
-			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObj.get(joi);
+			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObjects.get(joi);
 			if (jvnObjectAndServer == null) {
 				throw new JvnException(" Not found jvnObject with such an Id");
 			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.NL) {
@@ -147,14 +130,12 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 				jvnObjectAndServer.getOwnerServers().add(js);
 
 			} else {
-				throw new JvnException(
-						"Unexpected lock state: " + jvnObjectAndServer.getJvnObjectMemberState() + " !");
+				throw new JvnException("Unexpected lock state: " + jvnObjectAndServer.getJvnObjectMemberState() + " !");
 			}
 			System.out.println("Verrou en lecture attribué!!");
 			return jvnObjectAndServer.getLatestJvnObjectContent();
 
 		}
-
 
 	}
 
@@ -172,14 +153,13 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObj.get(joi);
+			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObjects.get(joi);
 			if (jvnObjectAndServer == null) {
 				throw new JvnException(" Not found jvnObject with such an Id !\n");
 			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.NL) {
 				// I could,'t figure out if there is something to do in this case
 			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.R) {
-				Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers()
-						.iterator();
+				Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers().iterator();
 				while (ownerServersIterator.hasNext()) {
 					try {
 						ownerServersIterator.next().jvnInvalidateReader(joi);
@@ -191,10 +171,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 				}
 			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.W) {
 				try {
-					Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers()
-							.iterator();
-					jvnObjectAndServer
-							.setLatestJvnObjectContent(ownerServersIterator.next().jvnInvalidateWriter(joi));
+					Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers().iterator();
+					jvnObjectAndServer.setLatestJvnObjectContent(ownerServersIterator.next().jvnInvalidateWriter(joi));
 
 				} catch (Exception e) {
 					throw new JvnException("Error invalidating a write lock!\n" + e);
@@ -223,7 +201,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			Iterator<ServersAndJvnObjectWithState> allJvnObjectServersIterator = listServersWithJvnObj.values().iterator();
+			Iterator<ServersAndJvnObjectWithState> allJvnObjectServersIterator = listServersWithJvnObjects.values()
+					.iterator();
 			Iterator<JvnRemoteServer> OwnerServersIterator;
 			ServersAndJvnObjectWithState currentJvnObjectServersCouple;
 			JvnRemoteServer currentJvnServer;

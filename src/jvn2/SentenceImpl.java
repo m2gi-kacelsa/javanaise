@@ -6,22 +6,25 @@
  * Authors: 
  */
 
-package irc2;
+package jvn2;
 
-public class Sentence implements java.io.Serializable, ISentence {
+public class SentenceImpl implements java.io.Serializable, ISentence {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 	String 	data;
   
-	public Sentence() {
+	public SentenceImpl() {
 		data = new String("");
 	}
 	
+	@MethodType(type = "write")
 	public void write(String text) {
 		data = text;
 	}
+	
+	@MethodType(type = "read")
 	public String read() {
 		return data;	
 	}

@@ -1,6 +1,4 @@
-package irc2;
-
-import enums.MethodType;
+package jvn2;
 
 public interface ISentence {
 

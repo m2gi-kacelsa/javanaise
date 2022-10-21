@@ -143,8 +143,8 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	public Serializable jvnLockRead(int joi) throws JvnException {
 		try {
 			return coord.jvnLockRead(joi, this);
-		} catch (Exception e) {
-			throw new JvnException("Error!!");
+		} catch (Exception e) { 
+			throw new JvnException("Error lock read!!");
 		}
 	}
 

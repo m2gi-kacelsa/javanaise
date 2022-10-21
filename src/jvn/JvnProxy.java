@@ -5,39 +5,36 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
-import enums.MethodType;
+import jvn2.MethodType;
+import jvn2.SentenceImpl;
 
 public class JvnProxy implements InvocationHandler {
 
 	private JvnObject jvnObject;
 
-	public JvnProxy(JvnObject jo) throws JvnException{
+	public JvnProxy(JvnObject jo) throws JvnException {
 		this.jvnObject = jo;
-
-		try {
-			jo.jvnUnLock();
-		} catch (JvnException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	public static Object newInstance(Serializable obj, String name) throws JvnException {
-		JvnServerImpl jvnServerImpl = JvnServerImpl.jvnGetServer();
-		JvnObject jvnObject = null;
-
+		JvnObject jo = null;
 		try {
-			jvnObject = jvnServerImpl.jvnLookupObject(name);
-			if (jvnObject == null) {
-				jvnObject = jvnServerImpl.jvnCreateObject(obj);
-				jvnServerImpl.jvnRegisterObject(name, jvnObject);
+			// initialize JVN
+			JvnServerImpl js = JvnServerImpl.jvnGetServer();
+			jo = js.jvnLookupObject("IRC");
+
+			if (jo == null) {
+				jo = js.jvnCreateObject((Serializable) new SentenceImpl());
+				// after creation, I have a write lock on the object
+				jo.jvnUnLock();
+				js.jvnRegisterObject("IRC", jo);
 			}
 		} catch (JvnException e) {
-			e.printStackTrace();
+			e.getMessage();
 		}
 
 		return Proxy.newProxyInstance(obj.getClass().getClassLoader(), obj.getClass().getInterfaces(),
-				new JvnProxy(jvnObject));
+				new JvnProxy(jo));
 	}
 
 	// Interception of the method invocations to lock and unlock the shared object
@@ -48,7 +45,7 @@ public class JvnProxy implements InvocationHandler {
 		try {
 			if (method.isAnnotationPresent(MethodType.class)) {
 				String type = method.getAnnotation(MethodType.class).type();
-				System.out.println("type =========> "+type);
+				System.out.println("type =========> " + type);
 				if (type.equals("read")) {
 					jvnObject.jvnLockRead();
 				} else if (type.equals("write")) {
@@ -57,12 +54,13 @@ public class JvnProxy implements InvocationHandler {
 					throw new JvnException("error in type method!!");
 				}
 			}
-			
-			System.out.println("***********error");
-			result = method.invoke(jvnObject, args);
+
+			Serializable temp = jvnObject.getCurrentJvnObject();
+			result = method.invoke(temp, args);
+
 			jvnObject.jvnUnLock();
 		} catch (JvnException e) {
-			e.getMessage();	
+			e.getMessage();
 		}
 
 		return result;

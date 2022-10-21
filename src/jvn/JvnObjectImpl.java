@@ -27,54 +27,47 @@ public class JvnObjectImpl implements JvnObject {
 	}
 
 	@Override
-	public void jvnLockRead() throws JvnException {
+	public synchronized void jvnLockRead() throws JvnException {
 		System.out.println("demande de verrou en lecture . . .");
-		
-		synchronized (this) {
-			if (jvnObjectState == JvnObjectState.RC)
-				this.jvnObjectState = JvnObjectState.R;
-			else {
-				currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
-				this.jvnObjectState = JvnObjectState.R;
-			}
-
+		if (jvnObjectState == JvnObjectState.RC)
+			this.jvnObjectState = JvnObjectState.R;
+		else if (jvnObjectState == JvnObjectState.WC) {
+			this.jvnObjectState = JvnObjectState.RWC;
+		} else {
+			currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
+			this.jvnObjectState = JvnObjectState.R;
 		}
 	}
 
 	@Override
-	public void jvnLockWrite() throws JvnException {
+	public synchronized void jvnLockWrite() throws JvnException {
 		System.out.println("demande de verrou en ecriture . . .");
-		
-		synchronized (this) {
-			if (jvnObjectState == JvnObjectState.WC) {
-				jvnObjectState = JvnObjectState.W;
-			} else {
-				currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnObjectId);	
-				jvnObjectState = JvnObjectState.W;
-			}
-
+		if (jvnObjectState == JvnObjectState.WC) {
+			jvnObjectState = JvnObjectState.W;
+		} else {
+			currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnObjectId);
+			jvnObjectState = JvnObjectState.W;
 		}
-
 	}
 
 	@Override
-	public void jvnUnLock() throws JvnException {
+	public synchronized void jvnUnLock() throws JvnException {
 		// TODO Auto-generated method stub
-		synchronized (this) {
-			switch (jvnObjectState) {
-			case R:
-				this.jvnObjectState = JvnObjectState.RC;
-				this.notifyAll();
-				break;
-			case W:
-				this.jvnObjectState = JvnObjectState.WC;
-				this.notifyAll();
-				break;
-			default:
-				throw new IllegalArgumentException("Unexpected value: " + jvnObjectState);
-			}
-		}
+		switch (jvnObjectState) {
+		case R:
+			this.jvnObjectState = JvnObjectState.RC;
+			break;
+		case W:
+			this.jvnObjectState = JvnObjectState.WC;
+			break;
+		case RWC:
+			this.jvnObjectState = JvnObjectState.WC;
+			break;
 
+		default:
+			throw new IllegalArgumentException("Unexpected value: " + jvnObjectState);
+		}
+		this.notifyAll();
 	}
 
 	@Override
@@ -91,65 +84,42 @@ public class JvnObjectImpl implements JvnObject {
 
 	@Override
 	public void jvnInvalidateReader() throws JvnException {
-		synchronized (this) {
-			if (this.jvnObjectState == JvnObjectState.R) {
-				while (jvnObjectState == JvnObjectState.R) {
-					try {
-						this.wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				jvnObjectState = JvnObjectState.NL;
-			} else if (jvnObjectState == JvnObjectState.RC) {
-				this.jvnObjectState = JvnObjectState.NL;
-			}
+		if (this.jvnObjectState == JvnObjectState.R || jvnObjectState == JvnObjectState.RC
+				|| jvnObjectState == JvnObjectState.RWC) {
+			jvnObjectState = JvnObjectState.NL;
 		}
 	}
 
 	@Override
-	public Serializable jvnInvalidateWriter() throws JvnException {
-		// TODO Auto-generated method stub
-		synchronized (this) {
+	public synchronized Serializable jvnInvalidateWriter() throws JvnException {
+
 			if (jvnObjectState == JvnObjectState.W) {
-				while (jvnObjectState == JvnObjectState.W) {
-					try {
-						this.wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				jvnObjectState = JvnObjectState.NL;
-			} else if (jvnObjectState == JvnObjectState.WC) {
-				jvnObjectState = JvnObjectState.NL;
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
-			return currentJvnObject;
+			jvnObjectState = JvnObjectState.NL;
+		} else if (jvnObjectState == JvnObjectState.WC) {
+			jvnObjectState = JvnObjectState.NL;
 		}
+		return currentJvnObject;
 	}
 
 	@Override
-	public Serializable jvnInvalidateWriterForReader() throws JvnException {
-		// TODO Auto-generated method stub
-		synchronized (this) {
-			if (jvnObjectState == JvnObjectState.W) {
-				while (jvnObjectState == JvnObjectState.W) {
-					try {
-						this.wait();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-
-				jvnObjectState = JvnObjectState.RC;
-			} else if (jvnObjectState == JvnObjectState.WC) {
-				jvnObjectState = JvnObjectState.RC;
+	public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException {
+		if (jvnObjectState == JvnObjectState.W) {
+			try {
+				this.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
-			return currentJvnObject;
-		}
 
+			jvnObjectState = JvnObjectState.RC;
+		} else if (jvnObjectState == JvnObjectState.WC || jvnObjectState == JvnObjectState.RWC) {
+			jvnObjectState = JvnObjectState.RC;
+		}
+		return currentJvnObject;
 	}
 
 	public int getJvnObjectId() {
