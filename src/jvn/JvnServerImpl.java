@@ -102,6 +102,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 				int idObject = coord.jvnGetObjectId();
 				jo.setJvnObjectId(idObject);
 				coord.jvnRegisterObject(jon, jo, this);
+				//add jvn object in cache
 				jvnObjsCache.put(idObject, jo);
 			} catch (RemoteException e) {
 				// TODO Auto-generated catch block

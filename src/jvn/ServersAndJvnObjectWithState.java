@@ -6,7 +6,7 @@ import java.util.List;
 
 import enums.JvnObjectState;
 
-public class JvnObjectServersCouple {
+public class ServersAndJvnObjectWithState {
 	private JvnObject jvnObjectMember;
 	private List<JvnRemoteServer> ownerServers = new ArrayList<>();
 	private JvnObjectState jvnObjectMemberState;
@@ -20,7 +20,7 @@ public class JvnObjectServersCouple {
 		this.latestJvnObjectContent = latestJvnObjectContent;
 	}
 
-	public JvnObjectServersCouple(JvnObject jvnObjectMember, JvnRemoteServer ownerServer, JvnObjectState jvnObjectMemberState ) {
+	public ServersAndJvnObjectWithState(JvnObject jvnObjectMember, JvnRemoteServer ownerServer, JvnObjectState jvnObjectMemberState ) {
 		this.jvnObjectMember= jvnObjectMember;
 		this.ownerServers.add(ownerServer);
 		this.jvnObjectMemberState= jvnObjectMemberState;

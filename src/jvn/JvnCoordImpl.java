@@ -25,8 +25,10 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 */
 	private static final long serialVersionUID = 1L;
 	private int currentId = -1;
+	//List of JvnObjects with their names
 	private HashMap<String, JvnObject> jvnObjectsNameMap = new HashMap<>();
-	private HashMap<Integer, JvnObjectServersCouple> jvnObjectsOwnersMap = new HashMap<>();
+	//List of servers holding JVNObject with write/read state
+	private HashMap<Integer, ServersAndJvnObjectWithState> listServersWithJvnObj = new HashMap<>();
 
 
 	/**
@@ -55,9 +57,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 * @throws java.rmi.RemoteException,JvnException
 	 **/
 	public synchronized int jvnGetObjectId() throws java.rmi.RemoteException, jvn.JvnException {
-		// JvnObjectImpl jvnObject = new JvnObjectImpl();
-		// je sais pas si serai mieux de synchroniser uniquement l'incrémentation et le
-		// return ??
 		return (++currentId);
 	}
 
@@ -74,23 +73,20 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			throws java.rmi.RemoteException, jvn.JvnException {
 
 		if (jon == null) {
-			throw new JvnException("jvn Name passed is null");
+			throw new JvnException("name of jvnobject is null!!");
 		} else if (jo == null) {
-			throw new JvnException("jvnObject passed is null");
+			throw new JvnException("jvnObject is null");
 		} else if (js == null) {
 			throw new JvnException("jvnServer passed is null");
-		} else if (jo.jvnGetObjectId() < 0 || jo.jvnGetObjectId() > currentId) {
-			throw new JvnException("Invalid jvnObject ID ! ");
 		} else if (jvnObjectsNameMap.containsKey(jon)) {
 			throw new JvnException("jvnObject with such a name is already registered !");
-		} else if (jvnObjectsOwnersMap.containsKey(jo.jvnGetObjectId())) {
+		} else if (listServersWithJvnObj.containsKey(jo.jvnGetObjectId())) {
 			throw new JvnException("Object with such an id is already registered !");
 		}
 
-		// To have trace of registred jvnObjects and severs having copy of such
-		// jvnObject
-		jvnObjectsOwnersMap.put(jo.jvnGetObjectId(), new JvnObjectServersCouple(jo, js, JvnObjectState.W));
-		// To get better performance when looking up for jvnObject
+		//ajouter le jvn object avec le serveur Js avec statut de l objet write
+		listServersWithJvnObj.put(jo.jvnGetObjectId(), new ServersAndJvnObjectWithState(jo, js, JvnObjectState.W));
+		// associer un nom au jvnobject et ajouter dans la liste
 		jvnObjectsNameMap.put(jon, jo);
 
 	}
@@ -104,9 +100,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 	 **/
 	public JvnObject jvnLookupObject(String jon, JvnRemoteServer js) throws java.rmi.RemoteException, jvn.JvnException {
 		if (jon == null) {
-			throw new JvnException("jvn Name passed is null");
+			throw new JvnException("jvn name is null");
 		} else if (js == null) {
-			throw new JvnException("jvnRemoteServer passed is null");
+			throw new JvnException("the instance if server is null");
 		}
 
 		synchronized (this) {
@@ -133,28 +129,29 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			JvnObjectServersCouple searchedJvnObjectServersCouple = jvnObjectsOwnersMap.get(joi);
-			if (searchedJvnObjectServersCouple == null) {
+			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObj.get(joi);
+			if (jvnObjectAndServer == null) {
 				throw new JvnException(" Not found jvnObject with such an Id");
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.NL) {
-				searchedJvnObjectServersCouple.setJvnObjectMemberState(JvnObjectState.R);
-				searchedJvnObjectServersCouple.getOwnerServers().add(js);
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.R) {
-				searchedJvnObjectServersCouple.getOwnerServers().add(js);
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.NL) {
+				jvnObjectAndServer.setJvnObjectMemberState(JvnObjectState.R);
+				jvnObjectAndServer.getOwnerServers().add(js);
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.R) {
+				jvnObjectAndServer.getOwnerServers().add(js);
 
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.W) {
-				JvnRemoteServer ownerServer = searchedJvnObjectServersCouple.getOwnerServers().iterator().next();
-				searchedJvnObjectServersCouple.setLatestJvnObjectContent(ownerServer.jvnInvalidateWriterForReader(joi));
-				searchedJvnObjectServersCouple.setJvnObjectMemberState(JvnObjectState.R);
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.W) {
+				JvnRemoteServer ownerServer = jvnObjectAndServer.getOwnerServers().iterator().next();
+				jvnObjectAndServer.setLatestJvnObjectContent(ownerServer.jvnInvalidateWriterForReader(joi));
+				jvnObjectAndServer.setJvnObjectMemberState(JvnObjectState.R);
 			}
-			if (!searchedJvnObjectServersCouple.getOwnerServers().contains(js)) {
-				searchedJvnObjectServersCouple.getOwnerServers().add(js);
+			if (!jvnObjectAndServer.getOwnerServers().contains(js)) {
+				jvnObjectAndServer.getOwnerServers().add(js);
 
 			} else {
 				throw new JvnException(
-						"Unexpected lock state: " + searchedJvnObjectServersCouple.getJvnObjectMemberState() + " !");
+						"Unexpected lock state: " + jvnObjectAndServer.getJvnObjectMemberState() + " !");
 			}
-			return searchedJvnObjectServersCouple.getLatestJvnObjectContent();
+			System.out.println("Verrou en lecture attribué!!");
+			return jvnObjectAndServer.getLatestJvnObjectContent();
 
 		}
 
@@ -175,13 +172,13 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			JvnObjectServersCouple searchedJvnObjectServersCouple = jvnObjectsOwnersMap.get(joi);
-			if (searchedJvnObjectServersCouple == null) {
+			ServersAndJvnObjectWithState jvnObjectAndServer = listServersWithJvnObj.get(joi);
+			if (jvnObjectAndServer == null) {
 				throw new JvnException(" Not found jvnObject with such an Id !\n");
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.NL) {
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.NL) {
 				// I could,'t figure out if there is something to do in this case
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.R) {
-				Iterator<JvnRemoteServer> ownerServersIterator = searchedJvnObjectServersCouple.getOwnerServers()
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.R) {
+				Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers()
 						.iterator();
 				while (ownerServersIterator.hasNext()) {
 					try {
@@ -192,11 +189,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 					}
 
 				}
-			} else if (searchedJvnObjectServersCouple.getJvnObjectMemberState() == JvnObjectState.W) {
+			} else if (jvnObjectAndServer.getJvnObjectMemberState() == JvnObjectState.W) {
 				try {
-					Iterator<JvnRemoteServer> ownerServersIterator = searchedJvnObjectServersCouple.getOwnerServers()
+					Iterator<JvnRemoteServer> ownerServersIterator = jvnObjectAndServer.getOwnerServers()
 							.iterator();
-					searchedJvnObjectServersCouple
+					jvnObjectAndServer
 							.setLatestJvnObjectContent(ownerServersIterator.next().jvnInvalidateWriter(joi));
 
 				} catch (Exception e) {
@@ -204,10 +201,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 				}
 			}
 
-			searchedJvnObjectServersCouple.getOwnerServers().clear();
-			searchedJvnObjectServersCouple.getOwnerServers().add(js);
-			searchedJvnObjectServersCouple.setJvnObjectMemberState(JvnObjectState.W);
-			return searchedJvnObjectServersCouple.getLatestJvnObjectContent();
+			jvnObjectAndServer.getOwnerServers().clear();
+			jvnObjectAndServer.getOwnerServers().add(js);
+			jvnObjectAndServer.setJvnObjectMemberState(JvnObjectState.W);
+			System.out.println("Verrou en ecriture attribué!!");
+			return jvnObjectAndServer.getLatestJvnObjectContent();
 
 		}
 
@@ -225,9 +223,9 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 		}
 
 		synchronized (this) {
-			Iterator<JvnObjectServersCouple> allJvnObjectServersIterator = jvnObjectsOwnersMap.values().iterator();
+			Iterator<ServersAndJvnObjectWithState> allJvnObjectServersIterator = listServersWithJvnObj.values().iterator();
 			Iterator<JvnRemoteServer> OwnerServersIterator;
-			JvnObjectServersCouple currentJvnObjectServersCouple;
+			ServersAndJvnObjectWithState currentJvnObjectServersCouple;
 			JvnRemoteServer currentJvnServer;
 
 			// for each registerd JvnObject we look up if is concerned by this server
@@ -255,7 +253,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
 			}
 
 		}
-		System.out.println("Server : \n" + js.toString() +"\n has terminated");
+		System.out.println("SERVER  HAS TERMINATED!");
 
 	}
 

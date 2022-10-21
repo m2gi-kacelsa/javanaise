@@ -28,13 +28,13 @@ public class JvnObjectImpl implements JvnObject {
 
 	@Override
 	public void jvnLockRead() throws JvnException {
-		// TODO Auto-generated method stub
+		System.out.println("demande de verrou en lecture . . .");
+		
 		synchronized (this) {
 			if (jvnObjectState == JvnObjectState.RC)
 				this.jvnObjectState = JvnObjectState.R;
 			else {
-				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
-				currentJvnObject = temp;
+				currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockRead(jvnObjectId);
 				this.jvnObjectState = JvnObjectState.R;
 			}
 
@@ -43,13 +43,13 @@ public class JvnObjectImpl implements JvnObject {
 
 	@Override
 	public void jvnLockWrite() throws JvnException {
-		// TODO Auto-generated method stub
+		System.out.println("demande de verrou en ecriture . . .");
+		
 		synchronized (this) {
 			if (jvnObjectState == JvnObjectState.WC) {
 				jvnObjectState = JvnObjectState.W;
 			} else {
-				Serializable temp = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnObjectId);	
-				currentJvnObject = temp;
+				currentJvnObject = JvnServerImpl.jvnGetServer().jvnLockWrite(jvnObjectId);	
 				jvnObjectState = JvnObjectState.W;
 			}
 
