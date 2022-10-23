@@ -19,6 +19,7 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 
 	private JvnRemoteCoord coord;
 	public HashMap<Integer, JvnObject> jvnObjsCache = null;
+	private  int maxCacheSize = 3;
 	/**
 	 * 
 	 */
@@ -97,6 +98,9 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 	 * @throws JvnException
 	 **/
 	public void jvnRegisterObject(String jon, JvnObject jo) throws jvn.JvnException {
+		if(jvnObjsCache.size() >= maxCacheSize){
+			throw new JvnException("Maximum cache size achieved");
+		}		
 		if (jo != null) {
 			try {
 				int idObject = coord.jvnGetObjectId();
@@ -124,6 +128,9 @@ public class JvnServerImpl extends UnicastRemoteObject implements JvnLocalServer
 		try {
 			jvnObject = coord.jvnLookupObject(jon, this);
 			if (jvnObject != null) {
+				if(jvnObjsCache.size() >= maxCacheSize){
+					throw new JvnException("Maximum cache size achieved");
+				}
 				jvnObjsCache.put(jvnObject.jvnGetObjectId(), jvnObject);
 			}
 		} catch (RemoteException e) {
